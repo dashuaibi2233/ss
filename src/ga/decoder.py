@@ -26,16 +26,18 @@ class Decoder:
         """
         self.config = config
     
-    def decode(self, chromosome, orders):
+    def decode(self, chromosome, orders, start_slot=1):
         """
         解码染色体
         
         根据Gene1和Gene2生成具体的调度方案。
-        严格遵循设计大纲 3.2 节的伪代码逻辑。
+        严格遵循设计大纲 3.2 节的伪代码逻辑，并允许通过 start_slot
+        将解码后的 slot 对齐到全局时间轴，实现滚动调度窗口的平移。
         
         Args:
             chromosome: 染色体对象，包含 gene1 和 gene2
             orders: 订单列表 (List[Order])
+            start_slot: 当前规划窗口在全局时间轴的起点（1-based）
             
         Returns:
             Schedule: 调度方案对象，包含 y_{o,l,t} 分配结果
@@ -44,7 +46,9 @@ class Decoder:
         schedule = Schedule()
         
         # 步骤2: 根据 Gene1 计算每个 (l,t) 的可用产能
-        available_capacity = self.calculate_available_capacity(chromosome.gene1)
+        available_capacity = self.calculate_available_capacity(
+            chromosome.gene1, start_slot=start_slot
+        )
         
         # 步骤3: 按 Gene2 中的订单优先级依次分配
         order_dict = {order.order_id: order for order in orders}
@@ -85,7 +89,7 @@ class Decoder:
         
         return schedule
     
-    def calculate_available_capacity(self, gene1):
+    def calculate_available_capacity(self, gene1, start_slot=1):
         """
         计算各时间段可用产能
         
@@ -119,7 +123,7 @@ class Decoder:
                     
                     # 使用 1-based 索引
                     line = line_idx + 1
-                    slot = slot_idx + 1
+                    slot = start_slot + slot_idx
                     
                     # 记录可用产能
                     key = (line, slot, product)

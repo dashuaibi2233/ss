@@ -29,7 +29,7 @@ class LocalSearch:
         """
         self.config = config
     
-    def optimize(self, initial_solution, orders):
+    def optimize(self, initial_solution, orders, start_slot=1):
         """
         执行局部搜索优化
         
@@ -42,13 +42,16 @@ class LocalSearch:
         Args:
             initial_solution: 初始解（GA最优解）
             orders: 订单列表
+            start_slot: 当前规划窗口在全局时间轴上的起始 slot（1-based）
             
         Returns:
             Chromosome: 优化后的解
         """
         # 复制初始解
         current_best = initial_solution.copy()
-        current_best.fitness = evaluate_chromosome(current_best, orders, self.config)
+        current_best.fitness = evaluate_chromosome(
+            current_best, orders, self.config, start_slot=start_slot
+        )
         
         max_iter = self.config.MAX_LS_ITERATIONS
         no_improvement_count = 0
@@ -65,9 +68,11 @@ class LocalSearch:
                 new_solution = self.neighborhood_swap_slots(current_best)
             else:  # N2
                 new_solution = self.neighborhood_adjust_allocation(current_best, orders)
-            
+
             # 计算新解的适应度
-            new_solution.fitness = evaluate_chromosome(new_solution, orders, self.config)
+            new_solution.fitness = evaluate_chromosome(
+                new_solution, orders, self.config, start_slot=start_slot
+            )
             
             # 判断是否接受新解
             if self.accept_solution(current_best.fitness, new_solution.fitness):
@@ -177,7 +182,7 @@ class LocalSearch:
 
 
 # 便捷函数：供外部直接调用
-def improve_solution(chromosome, orders, config):
+def improve_solution(chromosome, orders, config, start_slot=1):
     """
     改进解（便捷函数）
     
@@ -188,6 +193,7 @@ def improve_solution(chromosome, orders, config):
         chromosome: 初始染色体（GA最优解）
         orders: 订单列表 (List[Order])
         config: 配置对象，包含局部搜索参数
+        start_slot: 当前规划窗口在全局时间轴上的起始 slot（1-based）
         
     Returns:
         Chromosome: 改进后的染色体
@@ -200,5 +206,5 @@ def improve_solution(chromosome, orders, config):
         >>> print(f"Improvement: {improved_solution.fitness - ga_best.fitness:.2f}")
     """
     local_search = LocalSearch(config)
-    improved = local_search.optimize(chromosome, orders)
+    improved = local_search.optimize(chromosome, orders, start_slot=start_slot)
     return improved

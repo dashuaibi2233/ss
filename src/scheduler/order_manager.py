@@ -150,8 +150,9 @@ class OrderManager:
         """
         # 每天 6 个 slot
         slots_per_day = 6
-        # 计算当天的 slot
-        slot_in_day = (hour // 4) + 1
+        # 以早上 8 点作为每天的起始 slot=1
+        # 使用模运算处理跨天时间，例如 0 点应映射到 slot5
+        slot_in_day = ((hour - 8) % 24) // 4 + 1
         # 计算总 slot
         total_slot = day * slots_per_day + slot_in_day
         return total_slot
