@@ -31,5 +31,15 @@ class Config:
     CAPACITY = {}  # 各产品产能，格式: {product_id: capacity}
     
     def __init__(self):
-        """初始化配置"""
-        pass
+        """初始化配置，设置默认参数"""
+        # 设置默认产能参数
+        self.CAPACITY = {
+            1: 50,   # 产品1: 每slot产能50
+            2: 60,   # 产品2: 每slot产能60
+            3: 55,   # 产品3: 每slot产能55
+        }
+        
+        # 设置默认人工成本（每个slot的成本）
+        # 白班(8-20点): 100-115, 晚班(20-8点): 135-150
+        labor_costs_per_day = [100, 100, 115, 135, 150, 140]  # 6个slot/天
+        self.LABOR_COSTS = labor_costs_per_day * 10  # 10天

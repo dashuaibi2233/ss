@@ -34,18 +34,22 @@
 - ✅ **混合优化**: GA全局搜索 + ILS/VNS局部精化
 - ✅ **滚动调度**: 支持每日动态重调度，冻结已执行时间段
 - ✅ **多维度可视化**: 甘特图、收敛曲线、性能指标统计
+- ✅ **可视化GUI**: 基于Streamlit的Web界面，支持配置管理和结果分析
 
 ## 项目结构
 
 ```
 smart-scheduling/
 ├── 设计大纲.md              # 完整设计方案（问题建模+算法设计+实验方案）
+├── 实现流程.md              # GUI实现流程指引
 ├── README.md               # 项目说明文档
 ├── requirements.txt        # Python依赖配置
+├── gui_app.py              # GUI应用入口（Streamlit）
 │
 ├── src/                    # 源代码目录
-│   ├── main.py            # 主程序入口
+│   ├── main.py            # 命令行程序入口
 │   ├── config.py          # 系统配置参数
+│   ├── service.py         # 服务层（GUI调用接口）
 │   │
 │   ├── models/            # 数据模型模块
 │   │   ├── order.py       # 订单类（产品类型、数量、截止时间等）
@@ -70,13 +74,25 @@ smart-scheduling/
 │       └── metrics.py     # 性能指标可视化
 │
 ├── data/                  # 数据文件目录
-│   └── sample_orders_small.csv   # 订单样本（20个订单）
+│   ├── sample_orders_small.csv   # 小规模订单样本（20个订单）
+│   └── sample_orders_medium.csv  # 中等规模订单样本（50个订单）
+│
+├── output/                # 输出文件目录
+│   ├── gantt_chart.png    # 生产甘特图
+│   ├── profit_breakdown.png      # 利润分解图
+│   ├── order_completion.png      # 订单完成情况
+│   └── line_utilization.png      # 产线利用率
 │
 └── docs/                  # 文档目录
     ├── ALGORITHM.md       # 算法设计文档
     ├── ARCHITECTURE.md    # 系统架构文档
     ├── EXPERIMENT.md      # 实验方案文档
-    └── REPORT_SKELETON.md # 论文写作提纲
+    ├── REPORT_SKELETON.md # 论文写作提纲
+    ├── GUI使用说明.md     # GUI界面使用指南
+    ├── 指标说明.md        # 评价指标详细说明
+    ├── 更新说明.md        # 版本更新记录
+    ├── 滚动调度修复说明.md # 滚动调度机制说明
+    └── 罚款机制说明.md    # 罚款计算机制说明
 ```
 
 ## 环境安装
@@ -100,10 +116,32 @@ pip install -r requirements.txt
 - `matplotlib`: 图表绘制
 - `seaborn`: 统计可视化
 - `scipy`: 科学计算
+- `streamlit`: GUI界面框架
+- `plotly`: 交互式图表
 
 ## 运行方法
 
-### 运行演示程序
+### 方式一：GUI界面（推荐）
+
+启动可视化Web界面：
+
+```bash
+streamlit run gui_app.py
+```
+
+浏览器会自动打开 `http://localhost:8501`，提供完整的可视化操作界面。
+
+**GUI功能**：
+- 📋 配置管理：可视化编辑算法参数
+- 📦 订单管理：上传CSV或使用示例数据
+- 🚀 调度运行：一键执行调度算法
+- 📊 结果分析：查看甘特图和性能指标
+
+详细使用说明请参考：[GUI使用说明](docs/GUI使用说明.md)
+
+### 方式二：命令行运行
+
+运行演示程序：
 
 ```bash
 python src/main.py
@@ -113,7 +151,7 @@ python src/main.py
 
 1. 准备订单数据CSV文件，格式参考 `data/sample_orders_small.csv`
 2. 修改 `src/config.py` 中的参数配置
-3. 运行主程序
+3. 运行主程序（GUI或命令行）
 
 ### 配置说明
 

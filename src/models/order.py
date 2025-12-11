@@ -36,6 +36,7 @@ class Order:
         self.due_slot = due_slot
         self.unit_price = unit_price
         self.penalized = False  # 是否已被罚款
+        self.completed_slot = None  # 完成时的时段（用于判断是否按期）
     
     def update_remaining(self, completed):
         """

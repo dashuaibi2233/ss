@@ -78,7 +78,7 @@ class RollingScheduler:
         print(f"当前时段: {current_slot}, 冻结时段数: {len(self.frozen_slots)}")
         
         # 步骤3: 运行优化算法 (GA + 局部搜索)
-        planning_horizon = self.config.SLOTS_PER_DAY * 5  # 默认规划 5 天
+        planning_horizon = self.config.SLOTS_PER_DAY * 10  # 默认规划 5 天
         optimized_schedule = self.run_optimization(orders, planning_horizon, current_slot)
         
         # 步骤4: 更新当前调度方案
@@ -295,6 +295,9 @@ class RollingScheduler:
                     # 检查订单是否完成
                     if new_remaining == 0 and old_remaining > 0:
                         completed_orders.add(order_id)
+                        # 记录完成时的时段
+                        if order.completed_slot is None:
+                            order.completed_slot = slot
                     
                     # 记录该产线在工作
                     working_lines_set.add(line)

@@ -51,13 +51,14 @@ class Decoder:
         )
         
         # 步骤3: 按 Gene2 中的订单优先级依次分配
-        order_dict = {order.order_id: order for order in orders}
-        
-        for order_id in chromosome.gene2:
-            if order_id not in order_dict:
+        # Gene2 存储的是订单索引（0-based），需要转换为实际订单对象
+        for order_idx in chromosome.gene2:
+            # 检查索引是否有效
+            if order_idx < 0 or order_idx >= len(orders):
                 continue
             
-            order = order_dict[order_id]
+            order = orders[order_idx]
+            order_id = order.order_id
             target_product = order.product
             remaining_demand = order.quantity
             
@@ -65,7 +66,8 @@ class Decoder:
             # 收集所有可用的 (line, slot) 并按 slot 排序
             available_slots = []
             for (line, slot, product), capacity in available_capacity.items():
-                if product == target_product and slot <= order.due_slot and capacity > 0:
+                # 移除 slot <= order.due_slot 限制，允许继续生产延期订单
+                if product == target_product and capacity > 0:
                     available_slots.append((slot, line, capacity))
             
             # 按时间升序排序
@@ -146,20 +148,22 @@ class Decoder:
             dict: 订单分配方案 {(order_id, line, slot): quantity}
         """
         allocation = {}
-        order_dict = {order.order_id: order for order in orders}
         
-        for order_id in gene2:
-            if order_id not in order_dict:
+        # Gene2 存储的是订单索引（0-based），需要转换为实际订单对象
+        for order_idx in gene2:
+            if order_idx < 0 or order_idx >= len(orders):
                 continue
             
-            order = order_dict[order_id]
+            order = orders[order_idx]
+            order_id = order.order_id
             target_product = order.product
             remaining_demand = order.quantity
             
             # 收集所有可用的 (line, slot) 并按 slot 排序
             available_slots = []
             for (line, slot, product), capacity in available_capacity.items():
-                if product == target_product and slot <= order.due_slot and capacity > 0:
+                # 移除 slot <= order.due_slot 限制，允许继续生产延期订单
+                if product == target_product and capacity > 0:
                     available_slots.append((slot, line, capacity))
             
             # 按时间升序排序
