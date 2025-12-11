@@ -62,20 +62,45 @@ class RollingScheduler:
         print(f"第 {current_day + 1} 天调度 - 早上8:00")
         print("="*70)
         
-        # 步骤1: 准备订单池（未完成订单 + 新订单）
-        orders = self.order_manager.get_pending_orders()
-        # 统计未完成订单数（remaining > 0）
-        incomplete_count = sum(1 for order in orders if order.remaining > 0)
-        print(f"待处理订单: {len(orders)} 个 (其中未完成: {incomplete_count} 个)")
+        # 步骤1: 计算当前起始slot
+        current_slot = self.order_manager.time_to_slot(current_day, hour=8)
+        print(f"📅 当前起始slot: {current_slot} (第{current_day + 1}天早上8点)")
+        
+        # 步骤2: 准备订单池（只包含已到达且未完成的订单）
+        # 根据 release_slot <= current_slot 过滤订单
+        orders = self.order_manager.get_eligible_orders(current_slot)
+        
+        # 统计所有订单和未到达订单
+        all_orders = self.order_manager.get_all_orders()
+        total_unfinished = sum(1 for o in all_orders if o.remaining > 0)
+        future_orders = [o for o in all_orders if o.remaining > 0 and o.release_slot > current_slot]
+        
+        print(f"📦 订单池统计:")
+        print(f"  - 总未完成订单: {total_unfinished} 个")
+        print(f"  - 已到达可调度: {len(orders)} 个 (release_slot <= {current_slot})")
+        print(f"  - 未来订单: {len(future_orders)} 个 (release_slot > {current_slot})")
+        
+        if orders:
+            release_slots = [o.release_slot for o in orders]
+            print(f"  - 订单池release_slot范围: [{min(release_slots)}, {max(release_slots)}]")
         
         if not orders:
-            print("没有待处理订单，跳过调度")
+            print("⚠️  没有已到达的订单，跳过调度")
+            
+            # 即使没有订单，也要添加当天的财务数据（全为0），确保索引对齐
+            self.cumulative_stats['daily_results'].append({
+                'day': current_day + 1,
+                'revenue': 0.0,
+                'cost': 0.0,
+                'penalty': 0.0,
+                'profit': 0.0
+            })
+            
             return None
         
-        # 步骤2: 冻结已执行的 slot
-        current_slot = self.order_manager.time_to_slot(current_day, hour=8)
+        # 步骤3: 冻结已执行的 slot
         self.freeze_executed_slots(current_slot)
-        print(f"当前时段: {current_slot}, 冻结时段数: {len(self.frozen_slots)}")
+        print(f"🔒 冻结时段数: {len(self.frozen_slots)}")
         
         # 步骤3: 运行优化算法 (GA + 局部搜索)
         planning_horizon = self.config.SLOTS_PER_DAY * 10  # 默认规划 5 天
@@ -383,6 +408,8 @@ class RollingScheduler:
         - 如果订单未完成且之前没罚过，就罚一次
         - 标记 order.penalized = True 避免重复罚款
         
+        注意：due_slot是截止日期当天早上8点，当current_slot >= due_slot时订单已超期
+        
         Args:
             current_day: 当前天数（0-based）
             
@@ -392,12 +419,13 @@ class RollingScheduler:
         daily_penalty = 0.0
         orders = self.order_manager.get_all_orders()
         
-        # 计算当天结束时的slot（当天最后一个slot）
-        current_slot = (current_day + 1) * self.config.SLOTS_PER_DAY
+        # 计算当天早上8点的slot（每天调度的起始时刻）
+        current_slot = self.order_manager.time_to_slot(current_day, hour=8)
         
         for order in orders:
-            # 检查：订单截止时间 <= 当天结束时间
-            if order.due_slot <= current_slot:
+            # 检查：订单截止时间 <= 当前时刻（当天早上8点）
+            # 由于due_slot是截止日期当天早上8点，所以 current_slot >= due_slot 表示已超期
+            if current_slot >= order.due_slot:
                 # 检查：订单未完成 且 之前没罚过
                 if order.remaining > 0 and not order.penalized:
                     # 罚款 = 订单总金额 × 10%
@@ -407,7 +435,7 @@ class RollingScheduler:
                     # 标记已罚款，避免重复
                     order.penalized = True
                     
-                    print(f"  ⚠️  订单 {order.order_id} 到期未完成，罚款 ¥{penalty:.2f}")
+                    print(f"  ⚠️  订单 {order.order_id} 到期未完成（due_slot={order.due_slot}），罚款 ¥{penalty:.2f}")
         
         return daily_penalty
     

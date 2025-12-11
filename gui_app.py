@@ -148,17 +148,27 @@ with tab2:
         uploaded_file = st.file_uploader("选择CSV文件", type=['csv'])
         
         if uploaded_file is not None:
-            try:
-                # 保存上传的文件
-                temp_path = ROOT / 'data' / 'temp_orders.csv'
-                with open(temp_path, 'wb') as f:
-                    f.write(uploaded_file.getbuffer())
-                
-                # 加载订单
-                st.session_state.orders = load_orders(str(temp_path))
-                st.success(f"✅ 已加载 {len(st.session_state.orders.get_all_orders())} 个订单")
-            except Exception as e:
-                st.error(f"❌ 加载失败: {str(e)}")
+            # 使用文件名和大小作为唯一标识，避免重复加载
+            file_id = f"{uploaded_file.name}_{uploaded_file.size}"
+            
+            # 检查是否是新文件
+            if 'last_uploaded_file_id' not in st.session_state or st.session_state.last_uploaded_file_id != file_id:
+                try:
+                    # 保存上传的文件
+                    temp_path = ROOT / 'data' / 'temp_orders.csv'
+                    with open(temp_path, 'wb') as f:
+                        f.write(uploaded_file.getbuffer())
+                    
+                    # 加载订单
+                    st.session_state.orders = load_orders(str(temp_path))
+                    st.session_state.last_uploaded_file_id = file_id
+                    st.success(f"✅ 已加载 {len(st.session_state.orders.get_all_orders())} 个订单")
+                except Exception as e:
+                    st.error(f"❌ 加载失败: {str(e)}")
+            else:
+                # 文件已加载，显示提示
+                if st.session_state.orders is not None:
+                    st.info(f"📄 当前已加载 {len(st.session_state.orders.get_all_orders())} 个订单")
     
     with col2:
         st.subheader("使用示例数据")

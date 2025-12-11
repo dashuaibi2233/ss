@@ -99,16 +99,27 @@ def run_schedule(
     # 创建滚动调度器
     scheduler = RollingScheduler(config, order_manager)
     
-    # 运行多天滚动调度，收集每天的结果
+    # 运行多天滚动调度，在每天执行后立即保存状态快照
     for day in range(num_days):
         # 执行当天调度
         schedule = scheduler.run_daily_schedule(current_day=day)
         
-        # 创建当天结果对象
+        # 立即创建当天结果对象并保存状态快照
         day_result = DayResult(day)
         day_result.schedule = schedule
         
-        # 收集当天的订单进度
+        # 从daily_results获取当天的财务数据
+        # 注意：run_daily_schedule执行后，daily_results已经添加了当天的数据
+        if day < len(scheduler.cumulative_stats['daily_results']):
+            daily_financial = scheduler.cumulative_stats['daily_results'][day]
+            day_result.set_financial(
+                revenue=daily_financial['revenue'],
+                cost=daily_financial['cost'],
+                penalty=daily_financial['penalty'],
+                profit=daily_financial['profit']
+            )
+        
+        # 收集当天结束时的订单进度快照
         all_orders = order_manager.get_all_orders()
         for order in all_orders:
             # 计算订单进度
@@ -120,13 +131,13 @@ def run_schedule(
             if order.is_completed():
                 # 已完成订单：使用实际完成时间判断
                 if order.completed_slot is not None:
-                    is_on_time = order.completed_slot <= order.due_slot
+                    is_on_time = order.completed_slot < order.due_slot
                 else:
                     # 如果没有记录完成时间（旧数据），使用当前时间判断
-                    is_on_time = current_slot <= order.due_slot
+                    is_on_time = current_slot < order.due_slot
             else:
                 # 未完成订单：如果当前时间已超过截止时间，标记为延期风险
-                is_on_time = current_slot <= order.due_slot
+                is_on_time = current_slot < order.due_slot
             
             order_progress = {
                 'order_id': order.order_id,
@@ -143,16 +154,6 @@ def run_schedule(
             }
             
             day_result.add_order_progress(order.order_id, order_progress)
-        
-        # 获取当天的财务数据（从cumulative_stats的daily_results中）
-        if len(scheduler.cumulative_stats['daily_results']) > day:
-            daily_financial = scheduler.cumulative_stats['daily_results'][day]
-            day_result.set_financial(
-                revenue=daily_financial['revenue'],
-                cost=daily_financial['cost'],
-                penalty=daily_financial['penalty'],
-                profit=daily_financial['profit']
-            )
         
         # 添加到模拟结果中
         simulation_result.add_day_result(day, day_result)

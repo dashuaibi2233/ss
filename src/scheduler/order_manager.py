@@ -77,6 +77,28 @@ class OrderManager:
         self.pending_orders = [order for order in self.pending_orders if not order.is_completed()]
         return self.pending_orders
     
+    def get_eligible_orders(self, current_start_slot):
+        """
+        获取当前时刻可调度的订单（已到达且未完成）
+        
+        按照滚动调度策略：
+        - 订单必须已到达（release_slot <= current_start_slot）
+        - 订单尚未完成（remaining > 0）
+        - 当天8点之后到达的订单（release_slot > current_start_slot）不参与本轮调度
+        
+        Args:
+            current_start_slot: 当前调度时刻对应的slot（1-based）
+            
+        Returns:
+            list: 符合条件的订单列表 (List[Order])
+        """
+        # 构建订单池：已到达 && 未完成
+        eligible_orders = [
+            order for order in self.orders.values()
+            if order.remaining > 0 and order.release_slot <= current_start_slot
+        ]
+        return eligible_orders
+    
     def update_order_status(self, order_id, completed_quantity):
         """
         更新订单状态
@@ -95,14 +117,17 @@ class OrderManager:
             if order.is_completed() and order in self.pending_orders:
                 self.pending_orders.remove(order)
     
-    def load_orders_from_csv(self, filepath):
+    def load_orders_from_csv(self, filepath, adjust_due_slot=True, verbose=False):
         """
         从 CSV 文件加载订单
         
-        CSV 格式：order_id, product, quantity, due_slot, unit_price
+        CSV 格式：order_id, product, quantity, release_slot, due_slot, unit_price
+        （如果CSV中没有release_slot列，则默认为1）
         
         Args:
             filepath: CSV文件路径
+            adjust_due_slot: 是否调整due_slot到截止日期当天早上8点（默认True）
+            verbose: 是否打印详细的转换信息（默认False）
             
         Returns:
             int: 加载的订单数量
@@ -112,16 +137,37 @@ class OrderManager:
             with open(filepath, 'r', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
+                    # 读取release_slot，如果不存在则默认为1（兼容旧CSV格式）
+                    release_slot = int(row.get('release_slot', 1))
+                    original_due_slot = int(row['due_slot'])
+                    
+                    # 调整due_slot：统一到截止日期当天早上8点
+                    # 例如：due_slot=1-6 -> 7, due_slot=7-12 -> 13, due_slot=13-18 -> 19
+                    if adjust_due_slot:
+                        # 计算截止日期是第几天（0-based）
+                        due_day = (original_due_slot - 1) // 6
+                        # 调整到下一天早上8点（即下一天的第一个slot）
+                        adjusted_due_slot = (due_day + 1) * 6 + 1
+                    else:
+                        adjusted_due_slot = original_due_slot
+                    
                     order = Order(
                         order_id=int(row['order_id']),
                         product=int(row['product']),
                         quantity=int(row['quantity']),
-                        due_slot=int(row['due_slot']),
-                        unit_price=float(row['unit_price'])
+                        due_slot=adjusted_due_slot,
+                        unit_price=float(row['unit_price']),
+                        release_slot=release_slot
                     )
                     self.add_order(order)
                     count += 1
-            print(f"从 {filepath} 加载了 {count} 个订单")
+                    
+                    # 如果进行了调整且verbose=True，打印转换信息
+                    if verbose and adjust_due_slot and original_due_slot != adjusted_due_slot:
+                        print(f"  订单{order.order_id}: due_slot {original_due_slot} -> {adjusted_due_slot}")
+                        
+            if verbose:
+                print(f"从 {filepath} 加载了 {count} 个订单")
         except FileNotFoundError:
             print(f"错误: 文件 {filepath} 未找到")
         except Exception as e:

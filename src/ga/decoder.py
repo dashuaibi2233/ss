@@ -64,10 +64,14 @@ class Decoder:
             
             # 3.2: 在所有满足条件的 slot 中按时间升序遍历
             # 收集所有可用的 (line, slot) 并按 slot 排序
+            # 约束条件：release_slot <= t < due_slot（订单只能在到达后、截止前生产）
+            # 注意：due_slot是截止日期当天早上8点，订单必须在此之前完成
             available_slots = []
             for (line, slot, product), capacity in available_capacity.items():
-                # 移除 slot <= order.due_slot 限制，允许继续生产延期订单
-                if product == target_product and capacity > 0:
+                # 检查：产品匹配 && 有产能 && 在订单的时间窗口内 [release_slot, due_slot)
+                if (product == target_product and 
+                    capacity > 0 and 
+                    order.release_slot <= slot < order.due_slot):
                     available_slots.append((slot, line, capacity))
             
             # 按时间升序排序
@@ -160,10 +164,14 @@ class Decoder:
             remaining_demand = order.quantity
             
             # 收集所有可用的 (line, slot) 并按 slot 排序
+            # 约束条件：release_slot <= t < due_slot（订单只能在到达后、截止前生产）
+            # 注意：due_slot是截止日期当天早上8点，订单必须在此之前完成
             available_slots = []
             for (line, slot, product), capacity in available_capacity.items():
-                # 移除 slot <= order.due_slot 限制，允许继续生产延期订单
-                if product == target_product and capacity > 0:
+                # 检查：产品匹配 && 有产能 && 在订单的时间窗口内 [release_slot, due_slot)
+                if (product == target_product and 
+                    capacity > 0 and 
+                    order.release_slot <= slot < order.due_slot):
                     available_slots.append((slot, line, capacity))
             
             # 按时间升序排序

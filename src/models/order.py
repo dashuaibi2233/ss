@@ -14,11 +14,13 @@ class Order:
         product: 产品类型 (1, 2, 3)
         quantity: 需求数量
         remaining: 剩余未完成数量
-        due_slot: 截止时间（以slot为单位）
+        release_slot: 到达时间（以slot为单位），订单在此时间之后才能被安排生产
+        due_slot: 截止时间（以slot为单位），表示截止日期当天早上8点，订单必须在此之前完成
+                  订单的生产时间窗口为 [release_slot, due_slot)
         unit_price: 单位售价
     """
     
-    def __init__(self, order_id, product, quantity, due_slot, unit_price):
+    def __init__(self, order_id, product, quantity, due_slot, unit_price, release_slot=1):
         """
         初始化订单
         
@@ -28,11 +30,13 @@ class Order:
             quantity: 需求数量
             due_slot: 截止时间
             unit_price: 单位售价
+            release_slot: 到达时间（默认为1，即第1个slot就可生产）
         """
         self.order_id = order_id
         self.product = product
         self.quantity = quantity
         self.remaining = quantity
+        self.release_slot = release_slot  # 订单到达时间
         self.due_slot = due_slot
         self.unit_price = unit_price
         self.penalized = False  # 是否已被罚款
@@ -100,4 +104,4 @@ class Order:
     
     def __repr__(self):
         """订单的字符串表示"""
-        return f"Order(id={self.order_id}, product={self.product}, qty={self.quantity}, due={self.due_slot})"
+        return f"Order(id={self.order_id}, product={self.product}, qty={self.quantity}, release={self.release_slot}, due={self.due_slot})"
