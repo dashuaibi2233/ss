@@ -92,8 +92,12 @@ class Schedule:
             if isinstance(labor_costs, dict):
                 cost_per_slot = labor_costs.get(slot, 0)
             else:
-                # 如果是 list，假设为 0-based 索引
-                cost_per_slot = labor_costs[slot - 1] if slot - 1 < len(labor_costs) else 0
+                # 如果是 list，假设为 0-based 索引，并按天循环取值
+                if labor_costs:
+                    idx = (slot - 1) % len(labor_costs)
+                    cost_per_slot = labor_costs[idx]
+                else:
+                    cost_per_slot = 0
             self.cost += cost_per_slot
         
         # 计算总利润

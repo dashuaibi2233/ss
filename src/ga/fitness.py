@@ -27,7 +27,7 @@ class FitnessEvaluator:
         self.config = config
         self.decoder = Decoder(config)
     
-    def evaluate(self, chromosome, orders):
+    def evaluate(self, chromosome, orders, start_slot=1):
         """
         评估染色体的适应度
         
@@ -41,7 +41,7 @@ class FitnessEvaluator:
             float: 适应度值（总利润）
         """
         # 步骤1: 解码染色体，获取调度方案
-        schedule = self.decoder.decode(chromosome, orders)
+        schedule = self.decoder.decode(chromosome, orders, start_slot=start_slot)
         
         # 步骤2: 计算指标（Revenue, Cost, Penalty, Profit）
         schedule.calculate_metrics(
@@ -53,7 +53,7 @@ class FitnessEvaluator:
         # 步骤3: 返回总利润作为适应度
         return schedule.profit
     
-    def evaluate_with_details(self, chromosome, orders):
+    def evaluate_with_details(self, chromosome, orders, start_slot=1):
         """
         评估染色体并返回详细信息
         
@@ -64,7 +64,7 @@ class FitnessEvaluator:
         Returns:
             tuple: (fitness, schedule) - 适应度值和调度方案对象
         """
-        schedule = self.decoder.decode(chromosome, orders)
+        schedule = self.decoder.decode(chromosome, orders, start_slot=start_slot)
         schedule.calculate_metrics(
             orders=orders,
             labor_costs=self.config.LABOR_COSTS,
@@ -139,7 +139,7 @@ class FitnessEvaluator:
 
 
 # 便捷函数：供 GAEngine 直接调用
-def evaluate_chromosome(chromosome, orders, config):
+def evaluate_chromosome(chromosome, orders, config, start_slot=1):
     """
     评估染色体的适应度（便捷函数）
     
@@ -154,8 +154,8 @@ def evaluate_chromosome(chromosome, orders, config):
         float: 适应度值（总利润 = Revenue - Cost - Penalty）
     
     Example:
-        >>> fitness = evaluate_chromosome(chromosome, orders, config)
+        >>> fitness = evaluate_chromosome(chromosome, orders, config, start_slot=7)
         >>> chromosome.fitness = fitness
     """
     evaluator = FitnessEvaluator(config)
-    return evaluator.evaluate(chromosome, orders)
+    return evaluator.evaluate(chromosome, orders, start_slot=start_slot)

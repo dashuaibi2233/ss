@@ -79,7 +79,7 @@ class RollingScheduler:
         
         # 步骤3: 运行优化算法 (GA + 局部搜索)
         planning_horizon = self.config.SLOTS_PER_DAY * 5  # 默认规划 5 天
-        optimized_schedule = self.run_optimization(orders, planning_horizon)
+        optimized_schedule = self.run_optimization(orders, planning_horizon, current_slot)
         
         # 步骤4: 更新当前调度方案
         self.update_schedule(optimized_schedule)
@@ -125,7 +125,7 @@ class RollingScheduler:
         # 冻结所有小于 current_slot 的时间段
         self.frozen_slots = list(range(1, current_slot))
     
-    def run_optimization(self, orders, planning_horizon):
+    def run_optimization(self, orders, planning_horizon, start_slot):
         """
         运行优化算法
         
@@ -134,23 +134,36 @@ class RollingScheduler:
         Args:
             orders: 订单列表 (List[Order])
             planning_horizon: 规划时域（slot 数量）
+            start_slot: 当前规划窗口在全局时间轴上的起始 slot（1-based）
             
         Returns:
             Schedule: 优化后的调度方案
         """
-        print(f"\n正在为 {len(orders)} 个订单进行 {planning_horizon} 个时段的优化...")
+        print(
+            f"\n正在为 {len(orders)} 个订单进行 {planning_horizon} 个时段的优化"
+            f"（起始slot={start_slot}）..."
+        )
         
         # 阶段1: 运行遗传算法
         print("\n阶段1: 遗传算法")
-        ga_best = run_ga(orders, self.config)
+        ga_best = run_ga(
+            orders,
+            self.config,
+            planning_horizon=planning_horizon,
+            start_slot=start_slot,
+        )
         
         # 阶段2: 局部搜索改进
         print("\n阶段2: 局部搜索 (ILS/VNS)")
-        improved_solution = improve_solution(ga_best, orders, self.config)
+        improved_solution = improve_solution(
+            ga_best, orders, self.config, start_slot=start_slot
+        )
         
         # 解码为 Schedule 对象
         decoder = Decoder(self.config)
-        final_schedule = decoder.decode(improved_solution, orders)
+        final_schedule = decoder.decode(
+            improved_solution, orders, start_slot=start_slot
+        )
         final_schedule.calculate_metrics(orders, self.config.LABOR_COSTS, self.config.PENALTY_RATE)
         
         print(f"\n优化完成（算法内部指标，用于优化过程）")

@@ -20,16 +20,21 @@ class GAEngine:
     负责种群初始化、迭代进化、精英保留等核心流程。
     """
     
-    def __init__(self, config, orders):
+    def __init__(self, config, orders, planning_horizon=None, start_slot=1):
         """
         初始化GA引擎
         
         Args:
             config: 配置对象
             orders: 订单列表
+            planning_horizon: 规划时域（slot 数量），用于确定 Gene1 的长度；
+                               若为空则根据订单数量估算。
+            start_slot: 当前优化窗口的起始 slot（1-based），用于解码时对齐全局时间轴。
         """
         self.config = config
         self.orders = orders
+        self.planning_horizon = planning_horizon
+        self.start_slot = start_slot
         self.population = []
         self.best_chromosome = None
     
@@ -46,7 +51,11 @@ class GAEngine:
         self.population = []
         
         num_lines = self.config.NUM_LINES
-        num_slots = self.config.SLOTS_PER_DAY * (len(self.orders) // 10 + 1)  # 估算需要的时间段数
+        # 优先使用外部指定的规划时域，否则根据订单数量估算
+        if self.planning_horizon is not None:
+            num_slots = self.planning_horizon
+        else:
+            num_slots = self.config.SLOTS_PER_DAY * (len(self.orders) // 10 + 1)
         num_orders = len(self.orders)
         gene1_length = num_lines * num_slots
         
@@ -79,7 +88,9 @@ class GAEngine:
         
         # 计算初始种群的适应度
         for chromosome in self.population:
-            chromosome.fitness = evaluate_chromosome(chromosome, self.orders, self.config)
+            chromosome.fitness = evaluate_chromosome(
+                chromosome, self.orders, self.config, start_slot=self.start_slot
+            )
     
     def evolve(self):
         """
@@ -108,7 +119,9 @@ class GAEngine:
             
             # 计算后代适应度
             for child in offspring:
-                child.fitness = evaluate_chromosome(child, self.orders, self.config)
+                child.fitness = evaluate_chromosome(
+                    child, self.orders, self.config, start_slot=self.start_slot
+                )
             
             # 精英保留：按适应度排序，保留最优个体
             self.population.sort(key=lambda x: x.fitness, reverse=True)
@@ -214,7 +227,7 @@ class GAEngine:
 
 
 # 便捷函数：供外部直接调用
-def run_ga(orders, config):
+def run_ga(orders, config, planning_horizon=None, start_slot=1):
     """
     运行遗传算法（便捷函数）
     
@@ -223,6 +236,9 @@ def run_ga(orders, config):
     Args:
         orders: 订单列表 (List[Order])
         config: 配置对象，包含 GA 参数
+        planning_horizon: 规划时域（slot 数量），控制 Gene1 长度；
+                          若为 None 则由 GAEngine 自动估算。
+        start_slot: 规划窗口的起始 slot（1-based），保证解码后的 slot 与全局时间线对齐。
         
     Returns:
         Chromosome: 最优染色体
@@ -242,10 +258,13 @@ def run_ga(orders, config):
     print(f"变异率: {config.MUTATION_RATE}")
     print(f"精英个体数: {config.ELITE_SIZE}")
     print(f"订单数量: {len(orders)}")
+    print(f"规划窗口: 从 slot {start_slot} 开始，长度 {planning_horizon or '自动估算'}")
     print("="*60)
     
     # 创建 GA 引擎
-    ga_engine = GAEngine(config, orders)
+    ga_engine = GAEngine(
+        config, orders, planning_horizon=planning_horizon, start_slot=start_slot
+    )
     
     # 初始化种群
     print("\n初始化种群...")
