@@ -1,0 +1,11 @@
+metric,value
+total_profit,0.00
+total_revenue,0.00
+total_cost,0.00
+total_penalty,0.00
+on_time_rate,0.0000
+avg_completion_rate,0.0000
+total_orders,0
+completed_orders,0
+working_slots,0
+runtime_seconds,0.14

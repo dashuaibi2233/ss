@@ -30,6 +30,35 @@ class Config:
     # 产能参数
     CAPACITY = {}  # 各产品产能，格式: {product_id: capacity}
     
+    # 岛模型 GA 参数（默认关闭，保持与单种群 GA 等价的行为）
+    ENABLE_ISLAND_GA = False  # 是否启用岛模型并行 GA
+    NUM_ISLANDS = 1  # 岛数量，=1 时退化为单种群
+    ISLAND_MIGRATION_INTERVAL = 20  # 精英迁移周期（单位：GA 代数）
+    ISLAND_MIGRATION_ELITE_COUNT = 2  # 每个岛在一次迁移中输出的精英个体数
+    ISLAND_TYPES = ["profit", "delivery", "explore"]  # 岛类型轮换列表
+    ISLAND_PROFIT_SELECTION_PRESSURE = 1.0  # 利润导向岛选择压力放大系数
+    ISLAND_EXPLORATION_MUTATION_SCALE = 1.5  # 探索导向岛变异率放大系数
+    # 交付导向岛在当前阶段主要通过初始化与排序体现偏好，预留权重参数便于后续扩展
+    ISLAND_DELIVERY_PENALTY_SCALE = 1.0
+    
+    # 风险驱动局部搜索与受控退火（Step 3 使用，这里仅预留默认值）
+    ENABLE_RISK_GUIDED_LS = False
+    RISK_WEIGHT_PENALTY_POTENTIAL = 1.0
+    RISK_WEIGHT_DEMAND_GAP = 1.0
+    RISK_WEIGHT_URGENCY = 1.0
+    RISK_THRESHOLD_HIGH = 0.7
+    RISK_THRESHOLD_MEDIUM = 0.4
+    RISK_LS_MAX_ITER = 50
+    RISK_LS_NO_IMPROVEMENT_LIMIT = 10
+    ANNEALING_INIT_ACCEPT_PROB = 0.3
+    ANNEALING_DECAY_RATE = 0.95
+    ANNEALING_MIN_ACCEPT_PROB = 0.01
+    LS_NO_IMPROVEMENT_LIMIT = 10
+    
+    # 调试开关（默认关闭）
+    DEBUG_ISLAND_GA = False
+    DEBUG_RISK_LS = False
+    
     def __init__(self):
         """初始化配置，设置默认参数"""
         # 设置默认产能参数

@@ -11,6 +11,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from models.chromosome import Chromosome
 from ga.operators import GeneticOperators
 from ga.fitness import evaluate_chromosome
+from ga.island_engine import run_island_ga
 
 
 class GAEngine:
@@ -153,7 +154,11 @@ class GAEngine:
                 print(f"第 {generation + 1} 代提前终止，因为没有改善")
                 break
         
+        self.fitness_history = best_fitness_history
         return self.best_chromosome
+    
+    def get_fitness_history(self):
+        return getattr(self, "fitness_history", [])
     
     def select_parents(self):
         """
@@ -250,6 +255,18 @@ def run_ga(orders, config, planning_horizon=None, start_slot=1):
         >>> best_solution = run_ga(orders, config)
         >>> print(f"Best fitness: {best_solution.fitness}")
     """
+    # 判断是否启用岛模型 GA（NUM_ISLANDS > 1 时才真正走多岛路径）
+    enable_island = bool(getattr(config, "ENABLE_ISLAND_GA", False))
+    num_islands = int(getattr(config, "NUM_ISLANDS", 1))
+    if enable_island and num_islands > 1:
+        # 将调用委托给岛模型 GA 引擎
+        return run_island_ga(
+            orders,
+            config,
+            planning_horizon=planning_horizon,
+            start_slot=start_slot,
+        )
+
     print("="*60)
     print("启动遗传算法...")
     print(f"种群规模: {config.POPULATION_SIZE}")
@@ -261,7 +278,7 @@ def run_ga(orders, config, planning_horizon=None, start_slot=1):
     print(f"规划窗口: 从 slot {start_slot} 开始，长度 {planning_horizon or '自动估算'}")
     print("="*60)
     
-    # 创建 GA 引擎
+    # 创建 GA 引擎（单种群模式）
     ga_engine = GAEngine(
         config, orders, planning_horizon=planning_horizon, start_slot=start_slot
     )

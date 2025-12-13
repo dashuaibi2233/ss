@@ -1,0 +1,17 @@
+metric,value
+orders_count,36
+products_distribution,"{1: 9, 2: 11, 3: 16}"
+quantity_total,7079
+quantity_mean,196.64
+quantity_min,159
+quantity_max,248
+price_mean,94.56
+price_min,60.00
+price_max,118.00
+release_range,"[1,39]"
+due_range,"[20,60]"
+duration_mean,22.61
+duration_min,6
+duration_max,53
+violations_lt_6,0
+potential_revenue,668571.00

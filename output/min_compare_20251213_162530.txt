@@ -1,0 +1,9 @@
+Dataset: cases_mixed_products_tight_capacity.csv (32 orders)
+Window: start_slot=1, horizon=60
+OLD:
+  Profit=327740.00 Revenue=364200.00 Cost=8030.00 Penalty=28430.00
+  OnTime=0.5312 AvgCompletion=0.5626 Runtime=2.48s
+NEW:
+  Profit=318500.00 Revenue=356800.00 Cost=7970.00 Penalty=30330.00
+  OnTime=0.5000 AvgCompletion=0.5523 Runtime=4.75s
+Delta: Profit=-9240.00 Penalty=+1900.00 Cost=-60.00

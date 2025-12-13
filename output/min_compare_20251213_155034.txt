@@ -1,0 +1,9 @@
+Dataset: cases_uniform_deadlines.csv (30 orders)
+Window: start_slot=1, horizon=60
+OLD:
+  Profit=286296.00 Revenue=296370.00 Cost=6850.00 Penalty=3224.00
+  OnTime=0.9000 AvgCompletion=0.9000 Runtime=1.58s
+NEW:
+  Profit=286341.00 Revenue=296370.00 Cost=6805.00 Penalty=3224.00
+  OnTime=0.9000 AvgCompletion=0.9000 Runtime=5.66s
+Delta: Profit=+45.00 Penalty=+0.00 Cost=-45.00

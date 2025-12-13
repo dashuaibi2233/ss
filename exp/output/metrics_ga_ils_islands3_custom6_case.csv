@@ -1,0 +1,11 @@
+metric,value
+total_profit,484126.10
+total_revenue,514573.00
+total_cost,12145.00
+total_penalty,18301.90
+on_time_rate,0.6944
+avg_completion_rate,0.7442
+total_orders,36
+completed_orders,25
+working_slots,98
+runtime_seconds,3.72

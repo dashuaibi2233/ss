@@ -43,9 +43,12 @@ def load_default_config() -> Config:
     config.CROSSOVER_RATE = 0.8
     config.MUTATION_RATE = 0.1
     config.ELITE_SIZE = 3
+    config.ENABLE_ISLAND_GA = True
+    config.NUM_ISLANDS = 3
     
     # 局部搜索参数
     config.MAX_LS_ITERATIONS = 20
+    config.ENABLE_RISK_GUIDED_LS = True
     
     return config
 

@@ -45,7 +45,7 @@ def main():
     
     # 配置人工成本（每个slot的成本，共60个slot = 10天）
     # 白班(8-20点): 100, 晚班(20-8点): 150
-    labor_costs_per_day = [100, 100, 115, 135, 150, 140]  # 6个slot/天
+    labor_costs_per_day = [1000, 1000, 1200, 1400, 2000, 1600]  # 6个slot/天
     config.LABOR_COSTS = labor_costs_per_day * 10  # 10天
     
     # GA参数
@@ -54,9 +54,12 @@ def main():
     config.CROSSOVER_RATE = 0.8
     config.MUTATION_RATE = 0.1
     config.ELITE_SIZE = 3
+    config.ENABLE_ISLAND_GA = True
+    config.NUM_ISLANDS = 3
     
     # 局部搜索参数
     config.MAX_LS_ITERATIONS = 20  # 减少局部搜索迭代
+    config.ENABLE_RISK_GUIDED_LS = False
     
     print(f"  种群规模: {config.POPULATION_SIZE}")
     print(f"  最大迭代次数: {config.MAX_GENERATIONS}")
@@ -70,12 +73,14 @@ def main():
     csv_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         'data',
-        'sample_orders_small.csv'
+        'custom6_case.csv'
     )
     
     order_count = order_manager.load_orders_from_csv(csv_path)
     print(f"  已加载 {order_count} 个订单")
     print(f"  待处理订单: {order_manager.get_pending_count()}")
+    
+    
     
     # ========== 步骤3: 创建滚动调度器 ==========
     print("\n[步骤3] 创建滚动调度器...")
@@ -84,7 +89,7 @@ def main():
     
     # ========== 步骤4: 模拟多天滚动调度 ==========
     print("\n[步骤4] 运行滚动调度模拟...")
-    num_days = 3  # 模拟3天
+    num_days = 10
     
     for day in range(num_days):
         print(f"\n{'='*70}")
@@ -157,7 +162,7 @@ def main():
             final_schedule, 
             orders, 
             num_lines=3, 
-            max_slots=30,
+            max_slots=60,
             output_path=f"{output_dir}/gantt_chart.png"
         )
         
@@ -173,6 +178,64 @@ def main():
         print("   - line_utilization.png (产线利用率)")
     
     # ========== 完成 ==========
+    # 在不改变滚动调度外观行为下，最后打印旧版 vs 新版的最小对比（同数据同窗口）
+    print("\n[对比] 旧版 vs 新版（同数据同窗口）")
+    cfg_old = Config()
+    cfg_old.CAPACITY = config.CAPACITY
+    cfg_old.LABOR_COSTS = config.LABOR_COSTS
+    cfg_old.POPULATION_SIZE = config.POPULATION_SIZE
+    cfg_old.MAX_GENERATIONS = config.MAX_GENERATIONS
+    cfg_old.CROSSOVER_RATE = config.CROSSOVER_RATE
+    cfg_old.MUTATION_RATE = config.MUTATION_RATE
+    cfg_old.ELITE_SIZE = config.ELITE_SIZE
+    cfg_old.ENABLE_ISLAND_GA = False
+    cfg_old.NUM_ISLANDS = 1
+    cfg_old.ENABLE_RISK_GUIDED_LS = False
+    om_old = OrderManager()
+    om_old.load_orders_from_csv(csv_path)
+    sched_old = RollingScheduler(cfg_old, om_old)
+    for d in range(num_days):
+        sched_old.run_daily_schedule(current_day=d)
+    stats_old = sched_old.get_cumulative_statistics()
+    
+    cfg_new = Config()
+    cfg_new.CAPACITY = config.CAPACITY
+    cfg_new.LABOR_COSTS = config.LABOR_COSTS
+    cfg_new.POPULATION_SIZE = config.POPULATION_SIZE
+    cfg_new.MAX_GENERATIONS = config.MAX_GENERATIONS
+    cfg_new.CROSSOVER_RATE = config.CROSSOVER_RATE
+    cfg_new.MUTATION_RATE = config.MUTATION_RATE
+    cfg_new.ELITE_SIZE = config.ELITE_SIZE
+    cfg_new.ENABLE_ISLAND_GA = True
+    cfg_new.NUM_ISLANDS = 3
+    cfg_new.ENABLE_RISK_GUIDED_LS = bool(getattr(config, "ENABLE_RISK_GUIDED_LS", False))
+    om_new = OrderManager()
+    om_new.load_orders_from_csv(csv_path)
+    sched_new = RollingScheduler(cfg_new, om_new)
+    for d in range(num_days):
+        sched_new.run_daily_schedule(current_day=d)
+    stats_new = sched_new.get_cumulative_statistics()
+    
+    print("\n[最小对比结果]")
+    print(f"  旧版: 利润=¥{stats_old['total_profit']:,.2f} 收入=¥{stats_old['total_revenue']:,.2f} 成本=¥{stats_old['total_cost']:,.2f} 罚款=¥{stats_old['total_penalty']:,.2f}")
+    print(f"  新版: 利润=¥{stats_new['total_profit']:,.2f} 收入=¥{stats_new['total_revenue']:,.2f} 成本=¥{stats_new['total_cost']:,.2f} 罚款=¥{stats_new['total_penalty']:,.2f}")
+    dp = stats_new['total_profit'] - stats_old['total_profit']
+    dc = stats_new['total_cost'] - stats_old['total_cost']
+    dne = stats_new['total_penalty'] - stats_old['total_penalty']
+    print(f"  差异: 利润变化=¥{dp:+,.2f} 成本变化=¥{dc:+,.2f} 罚款变化=¥{dne:+,.2f}")
+    print(f"  旧版: 完成订单={stats_old['completed_orders']}/{stats_old['total_orders']} 按期率={stats_old['on_time_rate']*100:.1f}%")
+    print(f"  新版: 完成订单={stats_new['completed_orders']}/{stats_new['total_orders']} 按期率={stats_new['on_time_rate']*100:.1f}%")
+    dcomp = stats_new['completed_orders'] - stats_old['completed_orders']
+    drate = stats_new['on_time_rate']*100 - stats_old['on_time_rate']*100
+    print(f"  差异: 完成订单变化={dcomp:+d} 按期率变化={drate:+.1f}%")
+    # 简要原因说明
+    if dne > 0:
+        print("  说明: 新版罚款增加，多为局部搜索接受略差解或产能分配位移导致的到期未完成；可通过调低退火接受或提高交付偏好缓解。")
+    elif dp > 0:
+        print("  说明: 新版利润提升，岛模型并行在同窗内更好地平衡了成本与罚款。")
+    else:
+        print("  说明: 两版表现接近，建议针对数据特性调参以发挥新版优势。")
+    
     print("\n" + "="*70)
     print("🎉 演示完成!")
     print("="*70)

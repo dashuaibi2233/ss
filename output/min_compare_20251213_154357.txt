@@ -1,0 +1,9 @@
+Dataset: cases_high_penalty_cluster.csv (24 orders)
+Window: start_slot=1, horizon=60
+OLD:
+  Profit=282668.50 Revenue=291485.00 Cost=6755.00 Penalty=2061.50
+  OnTime=0.9583 AvgCompletion=0.9583 Runtime=0.74s
+NEW:
+  Profit=302240.00 Revenue=310390.00 Cost=7295.00 Penalty=855.00
+  OnTime=0.9583 AvgCompletion=0.9917 Runtime=5.90s
+Delta: Profit=+19571.50 Penalty=-1206.50 Cost=+540.00

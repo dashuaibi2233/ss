@@ -1,0 +1,9 @@
+Dataset: cases_staggered_arrivals.csv (28 orders)
+Window: start_slot=1, horizon=60
+OLD:
+  Profit=326970.00 Revenue=335260.00 Cost=8290.00 Penalty=0.00
+  OnTime=1.0000 AvgCompletion=1.0000 Runtime=2.24s
+NEW:
+  Profit=322980.00 Revenue=332160.00 Cost=8190.00 Penalty=990.00
+  OnTime=0.9643 AvgCompletion=0.9888 Runtime=4.73s
+Delta: Profit=-3990.00 Penalty=+990.00 Cost=-100.00

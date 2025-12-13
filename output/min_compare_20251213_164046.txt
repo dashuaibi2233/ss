@@ -1,0 +1,9 @@
+Dataset: sample_orders_small.csv (20 orders)
+Window: start_slot=1, horizon=60
+OLD:
+  Profit=207090.00 Revenue=215150.00 Cost=8060.00 Penalty=0.00
+  OnTime=1.0000 AvgCompletion=1.0000 Runtime=1.23s
+NEW:
+  Profit=207210.00 Revenue=215150.00 Cost=7940.00 Penalty=0.00
+  OnTime=1.0000 AvgCompletion=1.0000 Runtime=4.97s
+Delta: Profit=+120.00 Penalty=+0.00 Cost=-120.00

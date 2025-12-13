@@ -1,0 +1,9 @@
+Dataset: custom_case.csv (32 orders)
+Window: start_slot=1, horizon=60
+OLD:
+  Profit=561718.00 Revenue=576173.00 Cost=14455.00 Penalty=0.00
+  OnTime=1.0000 AvgCompletion=1.0000 Runtime=2.22s
+NEW:
+  Profit=530566.20 Revenue=548675.00 Cost=13690.00 Penalty=4418.80
+  OnTime=0.9062 AvgCompletion=0.9418 Runtime=5.16s
+Delta: Profit=-31151.80 Penalty=+4418.80 Cost=-765.00
