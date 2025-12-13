@@ -33,8 +33,8 @@ def load_default_config() -> Config:
     }
     
     # 配置人工成本（每个slot的成本，共60个slot = 10天）
-    # 白班(8-20点): 100, 晚班(20-8点): 150
-    labor_costs_per_day = [100, 100, 115, 135, 150, 140]  # 6个slot/天
+    # 白班(8-20点): 1000, 晚班(20-8点): 2000
+    labor_costs_per_day = [1000, 1000, 1000, 2000, 2000, 2000]
     config.LABOR_COSTS = labor_costs_per_day * 10  # 10天
     
     # GA参数
@@ -45,6 +45,7 @@ def load_default_config() -> Config:
     config.ELITE_SIZE = 3
     config.ENABLE_ISLAND_GA = True
     config.NUM_ISLANDS = 3
+    config.ENABLE_STOPLOSS = False
     
     # 局部搜索参数
     config.MAX_LS_ITERATIONS = 20
@@ -166,3 +167,20 @@ def run_schedule(
     simulation_result.set_cumulative_stats(cumulative_stats)
     
     return scheduler, simulation_result
+
+
+def run_full_cycle(
+    num_days: int,
+    csv_path: str,
+    config_overrides: Dict[str, Any] | None = None,
+) -> Tuple[RollingScheduler, SimulationResult]:
+    """
+    一次性运行完整周期（新方案接口），支持参数覆盖并返回 SimulationResult
+    """
+    config = load_default_config()
+    if config_overrides:
+        for k, v in config_overrides.items():
+            if hasattr(config, k):
+                setattr(config, k, v)
+    order_manager = load_orders(csv_path)
+    return run_schedule(config, order_manager, num_days)

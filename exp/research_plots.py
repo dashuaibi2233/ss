@@ -135,3 +135,4 @@ if __name__ == '__main__':
 
 
 #python exp\research_plots.py --data "C:\Users\Yuban\Desktop\computer_agent\smart-scheduling\data\custom6_case.csv" --days 6 --runs 8 --outdir exp\output
+#exp\research_plots.py --data "C:\Users\Yuban\Desktop\computer_agent\smart-scheduling\data\delay_full.csv" --days 5 --runs 8 --outdir exp\output

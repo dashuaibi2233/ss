@@ -59,6 +59,9 @@ class Config:
     DEBUG_ISLAND_GA = False
     DEBUG_RISK_LS = False
     
+    # 策略开关
+    ENABLE_STOPLOSS = False
+
     def __init__(self):
         """初始化配置，设置默认参数"""
         # 设置默认产能参数

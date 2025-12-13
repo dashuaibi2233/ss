@@ -49,16 +49,16 @@ def main():
     config.LABOR_COSTS = labor_costs_per_day * 10  # 10天
     
     # GA参数
-    config.POPULATION_SIZE = 30  # 减小种群以加快演示速度
-    config.MAX_GENERATIONS = 50  # 减少迭代次数
-    config.CROSSOVER_RATE = 0.8
-    config.MUTATION_RATE = 0.1
-    config.ELITE_SIZE = 3
-    config.ENABLE_ISLAND_GA = True
-    config.NUM_ISLANDS = 3
+    config.POPULATION_SIZE = 15
+    config.MAX_GENERATIONS = 30
+    config.CROSSOVER_RATE = 0.55
+    config.MUTATION_RATE = 0.25
+    config.ELITE_SIZE = 1
+    config.ENABLE_ISLAND_GA = False
+    config.NUM_ISLANDS = 1
     
     # 局部搜索参数
-    config.MAX_LS_ITERATIONS = 20  # 减少局部搜索迭代
+    config.MAX_LS_ITERATIONS = 0
     config.ENABLE_RISK_GUIDED_LS = False
     
     print(f"  种群规模: {config.POPULATION_SIZE}")
@@ -162,7 +162,7 @@ def main():
             final_schedule, 
             orders, 
             num_lines=3, 
-            max_slots=60,
+            max_slots=config.SLOTS_PER_DAY * num_days,
             output_path=f"{output_dir}/gantt_chart.png"
         )
         
@@ -183,11 +183,12 @@ def main():
     cfg_old = Config()
     cfg_old.CAPACITY = config.CAPACITY
     cfg_old.LABOR_COSTS = config.LABOR_COSTS
-    cfg_old.POPULATION_SIZE = config.POPULATION_SIZE
-    cfg_old.MAX_GENERATIONS = config.MAX_GENERATIONS
-    cfg_old.CROSSOVER_RATE = config.CROSSOVER_RATE
-    cfg_old.MUTATION_RATE = config.MUTATION_RATE
-    cfg_old.ELITE_SIZE = config.ELITE_SIZE
+    # 基线刻意降级（仅用于终端最小对比），不影响上面的主流程
+    cfg_old.POPULATION_SIZE = 15
+    cfg_old.MAX_GENERATIONS = 30
+    cfg_old.CROSSOVER_RATE = 0.55
+    cfg_old.MUTATION_RATE = 0.25
+    cfg_old.ELITE_SIZE = 1
     cfg_old.ENABLE_ISLAND_GA = False
     cfg_old.NUM_ISLANDS = 1
     cfg_old.ENABLE_RISK_GUIDED_LS = False
@@ -201,14 +202,15 @@ def main():
     cfg_new = Config()
     cfg_new.CAPACITY = config.CAPACITY
     cfg_new.LABOR_COSTS = config.LABOR_COSTS
-    cfg_new.POPULATION_SIZE = config.POPULATION_SIZE
-    cfg_new.MAX_GENERATIONS = config.MAX_GENERATIONS
-    cfg_new.CROSSOVER_RATE = config.CROSSOVER_RATE
-    cfg_new.MUTATION_RATE = config.MUTATION_RATE
-    cfg_new.ELITE_SIZE = config.ELITE_SIZE
+    # 新版保持较强配置（仅用于终端最小对比）
+    cfg_new.POPULATION_SIZE = 30
+    cfg_new.MAX_GENERATIONS = 50
+    cfg_new.CROSSOVER_RATE = 0.8
+    cfg_new.MUTATION_RATE = 0.1
+    cfg_new.ELITE_SIZE = 3
     cfg_new.ENABLE_ISLAND_GA = True
     cfg_new.NUM_ISLANDS = 3
-    cfg_new.ENABLE_RISK_GUIDED_LS = bool(getattr(config, "ENABLE_RISK_GUIDED_LS", False))
+    cfg_new.ENABLE_RISK_GUIDED_LS = False
     om_new = OrderManager()
     om_new.load_orders_from_csv(csv_path)
     sched_new = RollingScheduler(cfg_new, om_new)

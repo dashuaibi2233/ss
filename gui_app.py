@@ -14,7 +14,7 @@ import json
 ROOT = Path(__file__).resolve().parent
 sys.path.append(str(ROOT / 'src'))
 
-from src.service import load_default_config, load_orders, run_schedule
+from src.service import load_default_config, load_orders, run_schedule, run_full_cycle
 from src.visualization.gantt import GanttChart
 from src.visualization.metrics import MetricsVisualizer
 
@@ -42,6 +42,8 @@ if 'num_days' not in st.session_state:
 if 'output_dir' not in st.session_state:
     st.session_state.output_dir = str(ROOT / 'output')
     os.makedirs(st.session_state.output_dir, exist_ok=True)
+if 'current_csv_path' not in st.session_state:
+    st.session_state.current_csv_path = None
 
 # 标题
 st.title("🏭 智能制造生产调度系统")
@@ -58,23 +60,20 @@ with st.sidebar:
     crossover_rate = st.slider("交叉概率", 0.0, 1.0, st.session_state.config.CROSSOVER_RATE, 0.05)
     mutation_rate = st.slider("变异概率", 0.0, 1.0, st.session_state.config.MUTATION_RATE, 0.05)
     elite_size = st.number_input("精英个体数", min_value=1, max_value=10, value=st.session_state.config.ELITE_SIZE, step=1)
-    
-    # 局部搜索参数
-    st.subheader("局部搜索参数")
-    max_ls = st.number_input("最大迭代次数", min_value=10, max_value=100, value=st.session_state.config.MAX_LS_ITERATIONS, step=10)
+    stoploss_enabled = st.checkbox("启用停工保护（负利润日停工）", value=getattr(st.session_state.config, "ENABLE_STOPLOSS", False))
     
     # 应用配置按钮
-    if st.button("💾 应用配置", width="stretch"):
+    if st.button("💾 应用配置"):
         st.session_state.config.POPULATION_SIZE = pop_size
         st.session_state.config.MAX_GENERATIONS = max_gen
         st.session_state.config.CROSSOVER_RATE = crossover_rate
         st.session_state.config.MUTATION_RATE = mutation_rate
         st.session_state.config.ELITE_SIZE = elite_size
-        st.session_state.config.MAX_LS_ITERATIONS = max_ls
+        st.session_state.config.ENABLE_STOPLOSS = bool(stoploss_enabled)
         st.success("✅ 配置已更新")
     
     # 重置配置按钮
-    if st.button("🔄 重置为默认", width="stretch"):
+    if st.button("🔄 重置为默认"):
         st.session_state.config = load_default_config()
         st.rerun()
 
@@ -98,7 +97,7 @@ with tab1:
             {"产品ID": k, "产能(单位/slot)": v} 
             for k, v in st.session_state.config.CAPACITY.items()
         ])
-        st.dataframe(capacity_df, width="stretch", hide_index=True)
+        st.dataframe(capacity_df, use_container_width=True, hide_index=True)
     
     with col2:
         st.subheader("遗传算法参数")
@@ -108,11 +107,14 @@ with tab1:
         st.write(f"**变异概率:** {st.session_state.config.MUTATION_RATE}")
         st.write(f"**精英个体数:** {st.session_state.config.ELITE_SIZE}")
         
-        st.subheader("局部搜索参数")
-        st.write(f"**最大迭代次数:** {st.session_state.config.MAX_LS_ITERATIONS}")
-        
         st.subheader("成本参数")
         st.write(f"**违约罚款比例:** {st.session_state.config.PENALTY_RATE * 100}%")
+        day_cost = st.number_input("白班工资(每slot)", min_value=0, max_value=100000, value=(st.session_state.config.LABOR_COSTS[0] if len(st.session_state.config.LABOR_COSTS) >= 1 else 1000), step=10)
+        night_cost = st.number_input("晚班工资(每slot)", min_value=0, max_value=100000, value=(st.session_state.config.LABOR_COSTS[3] if len(st.session_state.config.LABOR_COSTS) >= 4 else 2000), step=10)
+        if st.button("💾 应用工资设置"):
+            labor_costs_per_day = [day_cost, day_cost, day_cost, night_cost, night_cost, night_cost]
+            st.session_state.config.LABOR_COSTS = labor_costs_per_day * 10
+            st.success("✅ 工资设置已更新")
     
     # 导出配置
     st.subheader("配置导入/导出")
@@ -125,7 +127,6 @@ with tab1:
             "CROSSOVER_RATE": st.session_state.config.CROSSOVER_RATE,
             "MUTATION_RATE": st.session_state.config.MUTATION_RATE,
             "ELITE_SIZE": st.session_state.config.ELITE_SIZE,
-            "MAX_LS_ITERATIONS": st.session_state.config.MAX_LS_ITERATIONS,
             "CAPACITY": st.session_state.config.CAPACITY,
         }
         config_json = json.dumps(config_dict, indent=2, ensure_ascii=False)
@@ -134,7 +135,6 @@ with tab1:
             data=config_json,
             file_name="config.json",
             mime="application/json",
-            width="stretch"
         )
 
 # Tab 2: 订单管理
@@ -161,6 +161,7 @@ with tab2:
                     
                     # 加载订单
                     st.session_state.orders = load_orders(str(temp_path))
+                    st.session_state.current_csv_path = str(temp_path)
                     st.session_state.last_uploaded_file_id = file_id
                     st.success(f"✅ 已加载 {len(st.session_state.orders.get_all_orders())} 个订单")
                 except Exception as e:
@@ -172,15 +173,17 @@ with tab2:
     
     with col2:
         st.subheader("使用示例数据")
-        if st.button("📂 加载小规模示例", width="stretch"):
+        if st.button("📂 加载小规模示例"):
             sample_path = ROOT / 'data' / 'sample_orders_small.csv'
             st.session_state.orders = load_orders(str(sample_path))
+            st.session_state.current_csv_path = str(sample_path)
             st.success(f"✅ 已加载示例订单")
             st.rerun()
         
-        if st.button("📂 加载中等规模示例", width="stretch"):
+        if st.button("📂 加载中等规模示例"):
             sample_path = ROOT / 'data' / 'sample_orders_medium.csv'
             st.session_state.orders = load_orders(str(sample_path))
+            st.session_state.current_csv_path = str(sample_path)
             st.success(f"✅ 已加载示例订单")
             st.rerun()
     
@@ -223,7 +226,7 @@ with tab2:
             })
         
         if order_data:
-            st.dataframe(pd.DataFrame(order_data), width="stretch", hide_index=True)
+            st.dataframe(pd.DataFrame(order_data), use_container_width=True, hide_index=True)
             if len(orders) > 20:
                 st.info(f"ℹ️ 仅显示前20个订单，共{len(orders)}个订单")
 
@@ -247,14 +250,25 @@ with tab3:
                 help="设置要模拟的生产天数"
             )
             
-            if st.button("▶️ 开始模拟（运行完整周期）", type="primary", width="stretch"):
+            if st.button("▶️ 开始模拟（运行完整周期）", type="primary"):
                 with st.spinner(f"🔄 正在运行{num_days}天的完整调度周期..."):
                     try:
-                        # 一次性运行完整周期，收集所有天的结果
-                        scheduler, simulation_result = run_schedule(
-                            st.session_state.config,
-                            st.session_state.orders,
-                            num_days
+                        base_day_costs = st.session_state.config.LABOR_COSTS[:6] if len(st.session_state.config.LABOR_COSTS) >= 6 else [1000, 1000, 1000, 2000, 2000, 2000]
+                        overrides = {
+                            "POPULATION_SIZE": st.session_state.config.POPULATION_SIZE,
+                            "MAX_GENERATIONS": st.session_state.config.MAX_GENERATIONS,
+                            "CROSSOVER_RATE": st.session_state.config.CROSSOVER_RATE,
+                            "MUTATION_RATE": st.session_state.config.MUTATION_RATE,
+                            "ELITE_SIZE": st.session_state.config.ELITE_SIZE,
+                            "LABOR_COSTS": base_day_costs * num_days,
+                            "ENABLE_STOPLOSS": getattr(st.session_state.config, "ENABLE_STOPLOSS", False),
+                        }
+                        csv_path = st.session_state.current_csv_path or str(ROOT / 'data' / 'temp_orders.csv')
+                        # 一次性运行完整周期（新接口）
+                        scheduler, simulation_result = run_full_cycle(
+                            num_days=num_days,
+                            csv_path=csv_path,
+                            config_overrides=overrides,
                         )
                         
                         # 保存结果
@@ -274,7 +288,7 @@ with tab3:
                                 final_schedule,
                                 orders,
                                 num_lines=3,
-                                max_slots=30,
+                                max_slots=st.session_state.config.SLOTS_PER_DAY * num_days,
                                 output_path=f"{st.session_state.output_dir}/gantt_chart.png"
                             )
                             
@@ -336,7 +350,7 @@ with tab3:
                         "利润": f"¥{day_result['profit']:,.2f}"
                     })
                 
-                st.dataframe(pd.DataFrame(daily_data), width="stretch", hide_index=True)
+                st.dataframe(pd.DataFrame(daily_data), use_container_width=True, hide_index=True)
             else:
                 st.info("ℹ️ 点击【运行调度】按钮开始调度")
 
@@ -354,7 +368,7 @@ with tab4:
         col_nav1, col_nav2, col_nav3 = st.columns([1, 3, 1])
         
         with col_nav1:
-            if st.button("⬅️ 前一天", width="stretch", disabled=(st.session_state.current_day == 0)):
+            if st.button("⬅️ 前一天", disabled=(st.session_state.current_day == 0)):
                 st.session_state.current_day = max(0, st.session_state.current_day - 1)
                 st.rerun()
         
@@ -374,7 +388,7 @@ with tab4:
                 st.rerun()
         
         with col_nav3:
-            if st.button("下一天 ➡️", width="stretch", disabled=(st.session_state.current_day >= st.session_state.num_days - 1)):
+            if st.button("下一天 ➡️", disabled=(st.session_state.current_day >= st.session_state.num_days - 1)):
                 st.session_state.current_day = min(st.session_state.num_days - 1, st.session_state.current_day + 1)
                 st.rerun()
         
@@ -422,7 +436,7 @@ with tab4:
             
             if order_progress_data:
                 df_progress = pd.DataFrame(order_progress_data)
-                st.dataframe(df_progress, width="stretch", hide_index=True)
+                st.dataframe(df_progress, use_container_width=True, hide_index=True)
                 
                 # 统计信息
                 col_s1, col_s2, col_s3 = st.columns(3)
@@ -457,7 +471,7 @@ with tab4:
         st.subheader("📈 生产甘特图")
         gantt_path = Path(st.session_state.output_dir) / "gantt_chart.png"
         if gantt_path.exists():
-            st.image(str(gantt_path), width="stretch")
+            st.image(str(gantt_path), use_column_width=True)
         else:
             st.warning("甘特图未生成")
         
@@ -470,13 +484,13 @@ with tab4:
             st.subheader("💰 利润分解")
             profit_path = Path(st.session_state.output_dir) / "profit_breakdown.png"
             if profit_path.exists():
-                st.image(str(profit_path), width="stretch")
+                st.image(str(profit_path), use_column_width=True)
         
         with col2:
             st.subheader("📦 订单完成情况")
             order_path = Path(st.session_state.output_dir) / "order_completion.png"
             if order_path.exists():
-                st.image(str(order_path), width="stretch")
+                st.image(str(order_path), use_column_width=True)
         
         st.markdown("---")
         
@@ -484,7 +498,7 @@ with tab4:
         st.subheader("🏭 产线利用率")
         util_path = Path(st.session_state.output_dir) / "line_utilization.png"
         if util_path.exists():
-            st.image(str(util_path), width="stretch")
+            st.image(str(util_path), use_column_width=True)
         
         st.markdown("---")
         
@@ -500,7 +514,6 @@ with tab4:
                         f,
                         file_name="gantt_chart.png",
                         mime="image/png",
-                        width="stretch"
                     )
         
         with col_d2:
@@ -511,7 +524,6 @@ with tab4:
                         f,
                         file_name="profit_breakdown.png",
                         mime="image/png",
-                        width="stretch"
                     )
         
         with col_d3:
@@ -522,7 +534,6 @@ with tab4:
                         f,
                         file_name="order_completion.png",
                         mime="image/png",
-                        width="stretch"
                     )
         
         with col_d4:
@@ -533,7 +544,6 @@ with tab4:
                         f,
                         file_name="line_utilization.png",
                         mime="image/png",
-                        width="stretch"
                     )
 
 # 页脚
@@ -546,3 +556,6 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+
+#python -m streamlit run gui_app.py --server.port 8503 --server.headless true 

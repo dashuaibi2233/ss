@@ -221,5 +221,10 @@
    - `MIN_COMPARE_CSV=data/cases_staggered_arrivals.csv python scripts/min_compare_old_vs_new.py`
    - 结果摘要：利润变化≈ -3,990.00；罚款上升约 990；需收紧退火与提高交付偏好以降低违约。
  - 验证示例（混合产品/产能偏紧）：
-   - `MIN_COMPARE_CSV=data/cases_mixed_products_tight_capacity.csv python scripts/min_compare_old_vs_new.py`
-   - 结果摘要：利润变化≈ +2,410.00；罚款上升约 1,110；收入增加更明显，建议调低高风险接受概率进一步平衡。
+  - `MIN_COMPARE_CSV=data/cases_mixed_products_tight_capacity.csv python scripts/min_compare_old_vs_new.py`
+  - 结果摘要：利润变化≈ +2,410.00；罚款上升约 1,110；收入增加更明显，建议调低高风险接受概率进一步平衡。
+
+### GUI v2 接口对齐（新增说明）
+- 日期：2025-12-13
+- 内容：新增 `/update/GUI_V2_接口说明.md`，对齐“完整周期运行 + 按天浏览”的入口与数据结构，补充新方案参数开关（岛模型/ILS/GA参数）。
+- 说明：该文件等价替代 `docs/GUI_V2_使用说明.md` 中“技术实现/数据结构/运行方式”的接口说明；原文的 UI 与展示结构保持一致。

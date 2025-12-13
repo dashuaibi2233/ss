@@ -191,6 +191,44 @@ class RollingScheduler:
         )
         final_schedule.calculate_metrics(orders, self.config.LABOR_COSTS, self.config.PENALTY_RATE)
         
+        # 停工保护：预估当日利润为负则当日停工
+        if getattr(self.config, "ENABLE_STOPLOSS", False):
+            day_start = start_slot
+            day_end = start_slot + self.config.SLOTS_PER_DAY - 1
+            # 预估当日收入
+            order_prices = {o.order_id: o.unit_price for o in orders}
+            day_revenue = 0.0
+            working_lines_by_slot = {}
+            for (order_id, line, slot), qty in final_schedule.allocation.items():
+                if day_start <= slot <= day_end and qty > 0:
+                    day_revenue += qty * order_prices.get(order_id, 0.0)
+                    working_lines_by_slot.setdefault(slot, set()).add(line)
+            # 预估当日成本
+            day_cost = 0.0
+            for slot, lines in working_lines_by_slot.items():
+                idx = (slot - 1) % self.config.SLOTS_PER_DAY
+                day_cost += self.config.LABOR_COSTS[idx] * len(lines)
+            # 预估当日罚款（不改变订单状态）
+            current_slot = start_slot
+            day_penalty = 0.0
+            for o in orders:
+                if current_slot >= o.due_slot and o.remaining > 0 and not getattr(o, "penalized", False):
+                    day_penalty += o.quantity * o.unit_price * self.config.PENALTY_RATE
+            day_profit = day_revenue - day_cost - day_penalty
+            if day_profit < 0:
+                # 移除当日分配
+                keys_to_remove = [k for k in final_schedule.allocation.keys() if day_start <= k[2] <= day_end]
+                for k in keys_to_remove:
+                    del final_schedule.allocation[k]
+                # 重建完成量
+                final_schedule.order_completion = {}
+                for (order_id, line, slot), qty in final_schedule.allocation.items():
+                    if qty > 0:
+                        final_schedule.order_completion[order_id] = final_schedule.order_completion.get(order_id, 0) + qty
+                # 重新计算指标
+                final_schedule.calculate_metrics(orders, self.config.LABOR_COSTS, self.config.PENALTY_RATE)
+                print("⚠️ 已触发停工保护：当天预估利润为负，已设置当日停工")
+        
         print(f"\n优化完成（算法内部指标，用于优化过程）")
         print(f"GA适应度: ¥{final_schedule.profit:.2f}")
         print(f"  规划期总收入: ¥{final_schedule.revenue:.2f}")
